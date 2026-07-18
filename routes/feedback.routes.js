@@ -1,8 +1,6 @@
 'use strict';
-
 const express = require('express');
 const { body } = require('express-validator');
-
 const { verifyFirebaseToken } = require('../middleware/auth');
 const { validate } = require('../middleware/validate');
 const { asyncHandler } = require('../middleware/errorHandler');
@@ -10,23 +8,19 @@ const { sendSuccess, sendError } = require('../utils/response');
 const { ERROR_CODES, COLLECTIONS } = require('../utils/constants');
 const { db } = require('../config/firebase');
 const { sendFeedbackEmail } = require('../services/email.service');
-
 const router = express.Router();
-
 const validators = [
   body('uid')
     .isString()
     .trim()
     .notEmpty()
     .withMessage('uid is required'),
-
   body('feedbackId')
     .isString()
     .trim()
     .notEmpty()
     .withMessage('feedbackId is required'),
 ];
-
 router.post(
   '/sendFeedback',
   verifyFirebaseToken,
@@ -36,17 +30,16 @@ router.post(
     const { uid, feedbackId } = req.body;
     const log = req.log;
     const startedAt = Date.now();
-
     log.info('Firestore read: feedback', {
       uid,
       feedbackId,
     });
-
     const snap = await db
+      .collection(COLLECTIONS.USERS)
+      .doc(uid)
       .collection(COLLECTIONS.FEEDBACK)
       .doc(feedbackId)
       .get();
-
     if (!snap.exists) {
       return sendError(res, {
         statusCode: 404,
@@ -54,15 +47,12 @@ router.post(
         code: ERROR_CODES.NOT_FOUND,
       });
     }
-
     const feedback = {
+      ...snap.data(),
       id: snap.id,
       uid,
-      ...snap.data(),
     };
-
     let messageId;
-
     try {
       messageId = await sendFeedbackEmail({
         feedback,
@@ -73,20 +63,17 @@ router.post(
         message: error.message,
         stack: error.stack,
       });
-
       return sendError(res, {
         statusCode: error.statusCode || 502,
         message: error.message || 'Failed to send feedback email',
         code: ERROR_CODES.EMAIL_FAILED,
       });
     }
-
     log.info('sendFeedback completed', {
       uid,
       feedbackId,
       durationMs: Date.now() - startedAt,
     });
-
     return sendSuccess(res, {
       message: 'Feedback sent successfully',
       data: {
@@ -95,5 +82,4 @@ router.post(
     });
   })
 );
-
 module.exports = router;
