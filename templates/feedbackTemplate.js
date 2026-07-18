@@ -6,6 +6,7 @@ const {
   buildLogoHeader,
   buildFooter,
   wrapEmail,
+  resolveShopName,
 } = require('./_shared');
 
 function formatFeedbackDate(rawDate) {
@@ -65,7 +66,7 @@ function buildFeedbackEmail({ feedback = {} }) {
   const stars = renderStars(rating);
   const message = feedback.message || feedback.feedback || '';
   const submittedAt = formatFeedbackDate(feedback.createdAt || feedback.date);
-  const shopName = feedback.shopName || (feedback.shop && feedback.shop.name) || '';
+  const shopName = feedback.shopName || (feedback.shop ? resolveShopName(feedback.shop) : '');
   const screenshotUrl = feedback.screenshotUrl || feedback.screenshot || feedback.imageUrl || '';
   const appVersion = feedback.appVersion || feedback.version || '';
   const device = feedback.device || feedback.deviceModel || '';
@@ -220,7 +221,7 @@ function buildFeedbackEmail({ feedback = {} }) {
     : '';
 
   const bodyRows = `
-    ${buildLogoHeader()}
+    ${buildLogoHeader(feedback.shop)}
     ${greetingRow}
     ${ratingRow}
     ${customerCardRow}
@@ -230,6 +231,7 @@ function buildFeedbackEmail({ feedback = {} }) {
     ${buildFooter({
       thankYouLine1: 'Thanks for keeping the app running smoothly.',
       thankYouLine2: 'This feedback was submitted by a customer.',
+      shop: feedback.shop,
     })}
   `;
 
