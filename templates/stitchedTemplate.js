@@ -8,6 +8,7 @@ const {
   buildShopBadge,
   buildFooter,
   wrapEmail,
+  resolveShopName,
 } = require('./_shared');
 
 /**
@@ -262,8 +263,8 @@ function buildStitchedEmail({ customer, shop, order, imageUrls, dress, amount })
     : '';
 
   const bodyRows = `
-    ${buildLogoHeader()}
-    ${buildShopBadge(shop.name, { filled: true })}
+    ${buildLogoHeader(shop)}
+    ${buildShopBadge(shop, { filled: true })}
     ${greetingRow}
     ${orderDetailsRow}
     ${pickupNoteRow}
@@ -271,10 +272,11 @@ function buildStitchedEmail({ customer, shop, order, imageUrls, dress, amount })
     ${buildFooter({
       thankYouLine1: 'We appreciate your trust and',
       thankYouLine2: 'look forward to serving you again.',
+      shop,
     })}
   `;
 
-  const subject = `Your order is stitched and ready — ${shop.name || 'VFitPro'}`;
+  const subject = `Your order is stitched and ready — ${resolveShopName(shop)}`;
   const htmlContent = wrapEmail(bodyRows, `Your ${dressName} is ready for pickup!`);
 
   return { subject, htmlContent };
