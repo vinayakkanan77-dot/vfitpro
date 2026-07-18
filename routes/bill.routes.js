@@ -34,7 +34,7 @@ router.post(
 
     const [customer, bill, shop] = await Promise.all([
       getCustomerById(uid, customerId, log),
-      getBillById(billId, log),
+      getBillById(uid, billId, log),
       getShopByUid(uid, log),
     ]);
 
@@ -70,7 +70,6 @@ router.post(
       });
     }
 
-    // Ensure the email service has the uid available for nested updates
     customer.uid = uid;
 
     let messageId;
@@ -96,9 +95,9 @@ router.post(
     }
 
     log.info('sendBill completed', {
-      billId,
-      customerId,
       uid,
+      customerId,
+      billId,
       durationMs: Date.now() - startedAt,
     });
 
