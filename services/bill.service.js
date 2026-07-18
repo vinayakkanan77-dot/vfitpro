@@ -4,8 +4,13 @@ const { db, admin } = require('../config/firebase');
 const { COLLECTIONS } = require('../utils/constants');
 
 /**
- * Read bill from:
+ * Get bill from:
  * users/{uid}/bills/{billId}
+ *
+ * @param {string} uid
+ * @param {string} billId
+ * @param {object} [log]
+ * @returns {Promise<object|null>}
  */
 async function getBillById(uid, billId, log) {
   log?.info('Firestore read: bill', { uid, billId });
@@ -27,6 +32,14 @@ async function getBillById(uid, billId, log) {
   };
 }
 
+/**
+ * Marks a bill as emailed.
+ *
+ * @param {string} uid
+ * @param {string} billId
+ * @param {string} messageId
+ * @param {object} [log]
+ */
 async function markBillEmailSent(uid, billId, messageId, log) {
   log?.info('Firestore update: bill emailSent flag', {
     uid,
