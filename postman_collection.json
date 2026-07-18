@@ -1,0 +1,64 @@
+{
+  "info": {
+    "name": "VFitPro Backend",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://localhost:10000" },
+    { "key": "idToken", "value": "REPLACE_WITH_FIREBASE_ID_TOKEN" }
+  ],
+  "item": [
+    {
+      "name": "Health Check",
+      "request": {
+        "method": "GET",
+        "url": "{{baseUrl}}/api/health"
+      }
+    },
+    {
+      "name": "Send Bill",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{idToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/sendBill",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"uid\": \"USER_UID\",\n  \"customerId\": \"CUSTOMER_ID\",\n  \"billId\": \"BILL_ID\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Send Stitched",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{idToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/sendStitched",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"uid\": \"USER_UID\",\n  \"customerId\": \"CUSTOMER_ID\"\n}"
+        }
+      }
+    },
+    {
+      "name": "Send Feedback",
+      "request": {
+        "method": "POST",
+        "header": [
+          { "key": "Content-Type", "value": "application/json" },
+          { "key": "Authorization", "value": "Bearer {{idToken}}" }
+        ],
+        "url": "{{baseUrl}}/api/sendFeedback",
+        "body": {
+          "mode": "raw",
+          "raw": "{\n  \"uid\": \"USER_UID\",\n  \"feedbackId\": \"FEEDBACK_ID\"\n}"
+        }
+      }
+    }
+  ]
+}
