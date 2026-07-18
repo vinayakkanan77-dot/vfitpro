@@ -3,49 +3,22 @@
 const { db, admin } = require('../config/firebase');
 const { sendTransactionalEmail } = require('../config/brevo');
 const { COLLECTIONS } = require('../utils/constants');
+
 const { buildBillEmail } = require('../templates/billTemplate');
 const { buildStitchedEmail } = require('../templates/stitchedTemplate');
 const { buildFeedbackEmail } = require('../templates/feedbackTemplate');
 
 /**
- * Sends the bill email and returns the Brevo messageId.
+ * -----------------------------------------
+ * SEND BILL EMAIL
+ * -----------------------------------------
  */
 async function sendBillEmail({ customer, bill, shop, log }) {
-  const { subject, htmlContent } = buildBillEmail({ customer, bill, shop });
 
-  const { messageId } = await sendTransactionalEmail({
-    to: { email: customer.email, name: customer.name },
-    subject,
-    htmlContent,
-    log,
-  });
-
-  log?.info('Firestore update: bill audit trail', { billId: bill.id, messageId });
-  await db
-    .collection(COLLECTIONS.BILLS)
-    .doc(bill.id)
-    .set(
-      { lastEmailSentAt: admin.firestore.FieldValue.serverTimestamp(), lastEmailMessageId: messageId },
-      { merge: true }
-    );
-
-  return messageId;
-}
-
-/**
- * Sends the "order stitched" email with Cloudinary image URLs already
- * present on the customer document (Android uploads images directly to
- * Cloudinary; this service never touches Cloudinary itself).
- */
-async function sendStitchedEmail({ customer, shop, log }) {
-  const imageUrls = Array.isArray(customer.stitchedImageUrls)
-    ? customer.stitchedImageUrls
-    : [];
-
-  const { subject, htmlContent } = buildStitchedEmail({
+  const { subject, htmlContent } = buildBillEmail({
     customer,
+    bill,
     shop,
-    imageUrls,
   });
 
   const { messageId } = await sendTransactionalEmail({
@@ -58,9 +31,96 @@ async function sendStitchedEmail({ customer, shop, log }) {
     log,
   });
 
-  log?.info("Firestore update: customer audit trail", {
-    customerId: customer.id,
+  log?.info('Firestore update: bill audit trail', {
     uid: customer.uid,
+    billId: bill.id,
+    messageId,
+  });
+
+  await db
+    .collection(COLLECTIONS.USERS)
+    .doc(customer.uid)
+    .collection(COLLECTIONS.BILLS)
+    .doc(bill.id)
+    .set(
+      {
+        lastEmailSentAt:
+          admin.firestore.FieldValue.serverTimestamp(),
+        lastEmailMessageId: messageId,
+      },
+      { merge: true }
+    );
+
+  return messageId;
+}
+
+/**
+ * -----------------------------------------
+ * SEND STITCHED EMAIL
+ * -----------------------------------------
+ */
+async function sendStitchedEmail({ customer, shop, log }) {
+
+  const imageUrls = [];
+
+  if (Array.isArray(customer.stitchedImageUrls)) {
+    imageUrls.push(...customer.stitchedImageUrls.filter(Boolean));
+  }
+
+  [
+    customer.frontImageUrl,
+    customer.backImageUrl,
+    customer.stitchedFrontImage,
+    customer.stitchedBackImage,
+    customer.frontUrl,
+    customer.backUrl,
+  ]
+    .filter(Boolean)
+    .forEach((url) => {
+      if (!imageUrls.includes(url)) {
+        imageUrls.push(url);
+      }
+    });
+
+  const dress =
+    customer.dress ||
+    customer.dressType ||
+    customer.itemName ||
+    customer.dressName ||
+    customer.orderType ||
+    customer.category ||
+    customer.type ||
+    '';
+
+  const amount =
+    Number(
+      customer.amount ??
+      customer.total ??
+      customer.price ??
+      0
+    );
+
+  const { subject, htmlContent } = buildStitchedEmail({
+    customer,
+    shop,
+    imageUrls,
+    dress,
+    amount,
+  });
+
+  const { messageId } = await sendTransactionalEmail({
+    to: {
+      email: customer.email,
+      name: customer.name,
+    },
+    subject,
+    htmlContent,
+    log,
+  });
+
+  log?.info('Firestore update: customer audit trail', {
+    uid: customer.uid,
+    customerId: customer.id,
     messageId,
   });
 
@@ -80,36 +140,68 @@ async function sendStitchedEmail({ customer, shop, log }) {
 
   return messageId;
 }
+
 /**
- * Sends feedback content to the shop owner's inbox.
+ * -----------------------------------------
+ * SEND FEEDBACK EMAIL
+ * -----------------------------------------
  */
 async function sendFeedbackEmail({ feedback, log }) {
+
   const ownerEmail = process.env.OWNER_EMAIL;
+
   if (!ownerEmail) {
-    const err = new Error('OWNER_EMAIL is not configured on the server');
+    const err = new Error(
+      'OWNER_EMAIL is not configured on the server'
+    );
     err.statusCode = 500;
     throw err;
   }
 
-  const { subject, htmlContent } = buildFeedbackEmail({ feedback });
+  const { subject, htmlContent } =
+    buildFeedbackEmail({
+      feedback,
+    });
 
-  const { messageId } = await sendTransactionalEmail({
-    to: { email: ownerEmail },
-    subject,
-    htmlContent,
-    log,
+  const { messageId } =
+    await sendTransactionalEmail({
+      to: {
+        email: ownerEmail,
+        name: 'Shop Owner',
+      },
+      subject,
+      htmlContent,
+      log,
+    });
+
+  log?.info('Firestore update: feedback audit trail', {
+    uid: feedback.uid,
+    feedbackId: feedback.id,
+    messageId,
   });
 
-  log?.info('Firestore update: feedback audit trail', { feedbackId: feedback.id, messageId });
-  await db
-    .collection(COLLECTIONS.FEEDBACK)
-    .doc(feedback.id)
-    .set(
-      { lastEmailSentAt: admin.firestore.FieldValue.serverTimestamp(), lastEmailMessageId: messageId },
-      { merge: true }
-    );
+  if (feedback.uid) {
+    await db
+      .collection(COLLECTIONS.USERS)
+      .doc(feedback.uid)
+      .collection(COLLECTIONS.FEEDBACK)
+      .doc(feedback.id)
+      .set(
+        {
+          emailSent: true,
+          lastEmailSentAt:
+            admin.firestore.FieldValue.serverTimestamp(),
+          lastEmailMessageId: messageId,
+        },
+        { merge: true }
+      );
+  }
 
   return messageId;
 }
 
-module.exports = { sendBillEmail, sendStitchedEmail, sendFeedbackEmail };
+module.exports = {
+  sendBillEmail,
+  sendStitchedEmail,
+  sendFeedbackEmail,
+};
