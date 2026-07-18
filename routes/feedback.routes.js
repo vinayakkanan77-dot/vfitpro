@@ -14,8 +14,17 @@ const { sendFeedbackEmail } = require('../services/email.service');
 const router = express.Router();
 
 const validators = [
-  body('uid').isString().trim().notEmpty().withMessage('uid is required'),
-  body('feedbackId').isString().trim().notEmpty().withMessage('feedbackId is required'),
+  body('uid')
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('uid is required'),
+
+  body('feedbackId')
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('feedbackId is required'),
 ];
 
 router.post(
@@ -24,36 +33,65 @@ router.post(
   validators,
   validate,
   asyncHandler(async (req, res) => {
-    const { feedbackId } = req.body;
+    const { uid, feedbackId } = req.body;
     const log = req.log;
     const startedAt = Date.now();
 
-    log.info('Firestore read: feedback', { feedbackId });
-    const snap = await db.collection(COLLECTIONS.FEEDBACK).doc(feedbackId).get();
+    log.info('Firestore read: feedback', {
+      uid,
+      feedbackId,
+    });
+
+    const snap = await db
+      .collection(COLLECTIONS.FEEDBACK)
+      .doc(feedbackId)
+      .get();
 
     if (!snap.exists) {
-      return sendError(res, { statusCode: 404, message: 'Feedback not found', code: ERROR_CODES.NOT_FOUND });
+      return sendError(res, {
+        statusCode: 404,
+        message: 'Feedback not found',
+        code: ERROR_CODES.NOT_FOUND,
+      });
     }
 
-    const feedback = { id: snap.id, ...snap.data() };
+    const feedback = {
+      id: snap.id,
+      uid,
+      ...snap.data(),
+    };
 
     let messageId;
+
     try {
-      messageId = await sendFeedbackEmail({ feedback, log });
+      messageId = await sendFeedbackEmail({
+        feedback,
+        log,
+      });
     } catch (error) {
-      log.error('sendFeedbackEmail failed', { message: error.message });
+      log.error('sendFeedbackEmail failed', {
+        message: error.message,
+        stack: error.stack,
+      });
+
       return sendError(res, {
         statusCode: error.statusCode || 502,
-        message: 'Failed to send feedback email',
+        message: error.message || 'Failed to send feedback email',
         code: ERROR_CODES.EMAIL_FAILED,
       });
     }
 
-    log.info('sendFeedback completed', { feedbackId, durationMs: Date.now() - startedAt });
+    log.info('sendFeedback completed', {
+      uid,
+      feedbackId,
+      durationMs: Date.now() - startedAt,
+    });
 
     return sendSuccess(res, {
       message: 'Feedback sent successfully',
-      data: { messageId },
+      data: {
+        messageId,
+      },
     });
   })
 );
