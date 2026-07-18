@@ -72,8 +72,13 @@ function dashedRule() {
 function resolveShopName(shopOrName) {
   if (!shopOrName) return BRAND_NAME;
   if (typeof shopOrName === 'string') return shopOrName.trim() || BRAND_NAME;
+  // IMPORTANT: shopName/businessName/storeName are checked before the
+  // generic `name` field on purpose. In this project, `users/{uid}`
+  // documents hold BOTH owner info and shop info, and `name` is
+  // frequently the owner's personal name. Only fall back to `name` as
+  // a last resort — never treat it as authoritative for branding.
   const name =
-    shopOrName.name || shopOrName.shopName || shopOrName.businessName || shopOrName.storeName;
+    shopOrName.shopName || shopOrName.businessName || shopOrName.storeName || shopOrName.name;
   return name && String(name).trim() ? String(name).trim() : BRAND_NAME;
 }
 
