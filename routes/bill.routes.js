@@ -33,20 +33,35 @@ router.post(
     const startedAt = Date.now();
 
     const [customer, bill, shop] = await Promise.all([
-      getCustomerById(customerId, log),
+      getCustomerById(uid, customerId, log),
       getBillById(billId, log),
       getShopByUid(uid, log),
     ]);
 
     if (!customer) {
-      return sendError(res, { statusCode: 404, message: 'Customer not found', code: ERROR_CODES.NOT_FOUND });
+      return sendError(res, {
+        statusCode: 404,
+        message: 'Customer not found',
+        code: ERROR_CODES.NOT_FOUND,
+      });
     }
+
     if (!bill) {
-      return sendError(res, { statusCode: 404, message: 'Bill not found', code: ERROR_CODES.NOT_FOUND });
+      return sendError(res, {
+        statusCode: 404,
+        message: 'Bill not found',
+        code: ERROR_CODES.NOT_FOUND,
+      });
     }
+
     if (!shop) {
-      return sendError(res, { statusCode: 404, message: 'Shop not found', code: ERROR_CODES.NOT_FOUND });
+      return sendError(res, {
+        statusCode: 404,
+        message: 'Shop not found',
+        code: ERROR_CODES.NOT_FOUND,
+      });
     }
+
     if (!customer.email) {
       return sendError(res, {
         statusCode: 400,
@@ -55,23 +70,43 @@ router.post(
       });
     }
 
+    // Ensure the email service has the uid available for nested updates
+    customer.uid = uid;
+
     let messageId;
+
     try {
-      messageId = await sendBillEmail({ customer, bill, shop, log });
+      messageId = await sendBillEmail({
+        customer,
+        bill,
+        shop,
+        log,
+      });
     } catch (error) {
-      log.error('sendBillEmail failed', { message: error.message });
+      log.error('sendBillEmail failed', {
+        message: error.message,
+        stack: error.stack,
+      });
+
       return sendError(res, {
         statusCode: error.statusCode || 502,
-        message: 'Failed to send bill email',
+        message: error.message || 'Failed to send bill email',
         code: ERROR_CODES.EMAIL_FAILED,
       });
     }
 
-    log.info('sendBill completed', { billId, durationMs: Date.now() - startedAt });
+    log.info('sendBill completed', {
+      billId,
+      customerId,
+      uid,
+      durationMs: Date.now() - startedAt,
+    });
 
     return sendSuccess(res, {
       message: 'Bill sent successfully',
-      data: { messageId },
+      data: {
+        messageId,
+      },
     });
   })
 );
