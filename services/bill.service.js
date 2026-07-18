@@ -4,30 +4,39 @@ const { db, admin } = require('../config/firebase');
 const { COLLECTIONS } = require('../utils/constants');
 
 /**
- * @param {string} billId
- * @param {object} [log]
- * @returns {Promise<object|null>}
+ * Read bill from:
+ * users/{uid}/bills/{billId}
  */
-async function getBillById(billId, log) {
-  log?.info('Firestore read: bill', { billId });
-  const snap = await db.collection(COLLECTIONS.BILLS).doc(billId).get();
-  if (!snap.exists) return null;
-  return { id: snap.id, ...snap.data() };
+async function getBillById(uid, billId, log) {
+  log?.info('Firestore read: bill', { uid, billId });
+
+  const snap = await db
+    .collection(COLLECTIONS.USERS)
+    .doc(uid)
+    .collection(COLLECTIONS.BILLS)
+    .doc(billId)
+    .get();
+
+  if (!snap.exists) {
+    return null;
+  }
+
+  return {
+    id: snap.id,
+    ...snap.data(),
+  };
 }
 
-/**
- * Marks a bill as emailed. Android already handles the primary Firestore
- * update after a successful API response (per the spec), but we also
- * stamp a server-side audit trail so "was this actually sent" never
- * depends solely on the client completing its own follow-up write.
- *
- * @param {string} billId
- * @param {string} messageId Brevo message id
- * @param {object} [log]
- */
-async function markBillEmailSent(billId, messageId, log) {
-  log?.info('Firestore update: bill emailSent flag', { billId, messageId });
+async function markBillEmailSent(uid, billId, messageId, log) {
+  log?.info('Firestore update: bill emailSent flag', {
+    uid,
+    billId,
+    messageId,
+  });
+
   await db
+    .collection(COLLECTIONS.USERS)
+    .doc(uid)
     .collection(COLLECTIONS.BILLS)
     .doc(billId)
     .set(
@@ -39,4 +48,7 @@ async function markBillEmailSent(billId, messageId, log) {
     );
 }
 
-module.exports = { getBillById, markBillEmailSent };
+module.exports = {
+  getBillById,
+  markBillEmailSent,
+};
