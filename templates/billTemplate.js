@@ -8,6 +8,7 @@ const {
   buildShopBadge,
   buildFooter,
   wrapEmail,
+  resolveShopName,
 } = require('./_shared');
 
 /**
@@ -73,9 +74,10 @@ function buildBillEmail({ customer, bill, shop }) {
   const billDate = formatBillDate(rawDate);
   const amount = Number(pickField([bill], AMOUNT_FIELDS) ?? 0);
 
+  const shopName = resolveShopName(shop);
   const upiId = shop.upiId || shop.upi || '';
   const upiLink = upiId
-    ? `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(shop.name || 'VFitPro')}&am=${amount}&cu=INR`
+    ? `upi://pay?pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(shopName)}&am=${amount}&cu=INR`
     : '';
 
   const greetingRow = `
@@ -187,19 +189,20 @@ function buildBillEmail({ customer, bill, shop }) {
     : '';
 
   const bodyRows = `
-    ${buildLogoHeader()}
-    ${buildShopBadge(shop.name)}
+    ${buildLogoHeader(shop)}
+    ${buildShopBadge(shop)}
     ${greetingRow}
     ${billDetailsRow}
     ${payRow}
     ${buildFooter({
       thankYouLine1: 'Your support means a lot to us.',
       thankYouLine2: 'We look forward to serving you again.',
+      shop,
     })}
   `;
 
   const displayAmount = formatCurrency(amount).replace('&#8377;', '₹');
-  const subject = `Your bill from ${shop.name || 'VFitPro'} — ${displayAmount}`;
+  const subject = `Your bill from ${shopName} — ${displayAmount}`;
   const htmlContent = wrapEmail(bodyRows, `Your stitching order is ready — ${displayAmount} due`);
 
   return { subject, htmlContent };
