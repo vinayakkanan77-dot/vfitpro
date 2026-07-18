@@ -16,8 +16,17 @@ const { sendStitchedEmail } = require('../services/email.service');
 const router = express.Router();
 
 const validators = [
-  body('uid').isString().trim().notEmpty().withMessage('uid is required'),
-  body('customerId').isString().trim().notEmpty().withMessage('customerId is required'),
+  body('uid')
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('uid is required'),
+
+  body('customerId')
+    .isString()
+    .trim()
+    .notEmpty()
+    .withMessage('customerId is required'),
 ];
 
 router.post(
@@ -31,16 +40,26 @@ router.post(
     const startedAt = Date.now();
 
     const [customer, shop] = await Promise.all([
-      getCustomerById(customerId, log),
+      getCustomerById(uid, customerId, log),
       getShopByUid(uid, log),
     ]);
 
     if (!customer) {
-      return sendError(res, { statusCode: 404, message: 'Customer not found', code: ERROR_CODES.NOT_FOUND });
+      return sendError(res, {
+        statusCode: 404,
+        message: 'Customer not found',
+        code: ERROR_CODES.NOT_FOUND,
+      });
     }
+
     if (!shop) {
-      return sendError(res, { statusCode: 404, message: 'Shop not found', code: ERROR_CODES.NOT_FOUND });
+      return sendError(res, {
+        statusCode: 404,
+        message: 'Shop not found',
+        code: ERROR_CODES.NOT_FOUND,
+      });
     }
+
     if (!customer.email) {
       return sendError(res, {
         statusCode: 400,
@@ -49,23 +68,41 @@ router.post(
       });
     }
 
+    // Pass uid to email service for nested Firestore updates
+    customer.uid = uid;
+
     let messageId;
+
     try {
-      messageId = await sendStitchedEmail({ customer, shop, log });
+      messageId = await sendStitchedEmail({
+        customer,
+        shop,
+        log,
+      });
     } catch (error) {
-      log.error('sendStitchedEmail failed', { message: error.message });
+      log.error('sendStitchedEmail failed', {
+        message: error.message,
+        stack: error.stack,
+      });
+
       return sendError(res, {
         statusCode: error.statusCode || 502,
-        message: 'Failed to send stitched email',
+        message: error.message || 'Failed to send stitched email',
         code: ERROR_CODES.EMAIL_FAILED,
       });
     }
 
-    log.info('sendStitched completed', { customerId, durationMs: Date.now() - startedAt });
+    log.info('sendStitched completed', {
+      uid,
+      customerId,
+      durationMs: Date.now() - startedAt,
+    });
 
     return sendSuccess(res, {
       message: 'Stitched notification sent successfully',
-      data: { messageId },
+      data: {
+        messageId,
+      },
     });
   })
 );
