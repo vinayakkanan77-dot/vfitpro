@@ -2,11 +2,13 @@
 
 module.exports = {
   COLLECTIONS: {
+    USERS: 'users',
     CUSTOMERS: 'customers',
     BILLS: 'bills',
     SHOPS: 'shops',
     FEEDBACK: 'feedback',
   },
+
   ERROR_CODES: {
     UNAUTHORIZED: 'UNAUTHORIZED',
     FORBIDDEN: 'FORBIDDEN',
